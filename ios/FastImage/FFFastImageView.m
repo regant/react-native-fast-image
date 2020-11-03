@@ -8,6 +8,10 @@
 @property (nonatomic, assign) BOOL hasErrored;
 // Whether the latest change of props requires the image to be reloaded
 @property (nonatomic, assign) BOOL needsReload;
+@property (nonatomic, assign) BOOL onFastImageErrorChanged;
+@property (nonatomic, assign) BOOL onFastImageLoadEndChanged;
+@property (nonatomic, assign) BOOL onFastImageLoadStartChanged;
+@property (nonatomic, assign) BOOL onFastImageLoadChanged;
 
 @property (nonatomic, strong) NSDictionary* onLoadEvent;
 
@@ -30,34 +34,30 @@
 }
 
 - (void)setOnFastImageLoadEnd:(RCTDirectEventBlock)onFastImageLoadEnd {
-    _onFastImageLoadEnd = onFastImageLoadEnd;
-    if (self.hasCompleted) {
-        _onFastImageLoadEnd(@{});
+    if (_onFastImageLoad != onFastImageLoadEnd) {
+        _onFastImageLoadEnd = onFastImageLoadEnd;
+        _onFastImageLoadEndChanged = YES;
     }
 }
 
 - (void)setOnFastImageLoad:(RCTDirectEventBlock)onFastImageLoad {
-    _onFastImageLoad = onFastImageLoad;
-    if (self.hasCompleted) {
-        _onFastImageLoad(self.onLoadEvent);
+    if (_onFastImageLoad != onFastImageLoad) {
+        _onFastImageLoad = onFastImageLoad;
+        _onFastImageLoadChanged = YES;
     }
 }
 
 - (void)setOnFastImageError:(RCTDirectEventBlock)onFastImageError {
-    _onFastImageError = onFastImageError;
-    if (self.hasErrored) {
-        _onFastImageError(@{});
+    if (_onFastImageError != onFastImageError) {
+        _onFastImageError = onFastImageError;
+        _onFastImageErrorChanged = YES;
     }
 }
 
 - (void)setOnFastImageLoadStart:(RCTDirectEventBlock)onFastImageLoadStart {
-    if (_source && !self.hasSentOnLoadStart) {
+    if (_onFastImageLoadStart != onFastImageLoadStart) {
         _onFastImageLoadStart = onFastImageLoadStart;
-        onFastImageLoadStart(@{});
-        self.hasSentOnLoadStart = YES;
-    } else {
-        _onFastImageLoadStart = onFastImageLoadStart;
-        self.hasSentOnLoadStart = NO;
+        _onFastImageLoadStartChanged = YES;
     }
 }
 
@@ -107,7 +107,25 @@
 {
     if (_needsReload) {
         [self reloadImage];
+    } else {
+        if (_onFastImageLoadEndChanged && (self.hasCompleted || self.hasErrored)) {
+            _onFastImageLoadEnd(@{});
+        }
+        if (_onFastImageLoadChanged && self.hasCompleted) {
+            _onFastImageLoad(@{});
+        }
+        if (_onFastImageErrorChanged && self.hasErrored) {
+            _onFastImageError(@{});
+        }
+        if (_onFastImageLoadStartChanged && _source && !self.hasSentOnLoadStart) {
+            _onFastImageLoadStart(@{});
+            self.hasSentOnLoadStart = YES;
+        }
     }
+    _onFastImageLoadEndChanged = NO;
+    _onFastImageLoadChanged = NO;
+    _onFastImageErrorChanged = NO;
+    _onFastImageLoadStartChanged = NO;
 }
 
 - (void)reloadImage
@@ -229,4 +247,3 @@
 }
 
 @end
-
